@@ -10,7 +10,7 @@ services:
     restart: always
     volumes:
       # 绝对路径：重启/任意目录执行都不会丢配置。若项目不在本机此路径，请改成你的实际路径
-      - /home/user/workspace/clash-stack/config/mihomo/config.yaml:/root/.config/mihomo/config.yaml
+      - ./config/mihomo/config.yaml:/root/.config/mihomo/config.yaml
     ports:
       - "7890:7890"
       - "7891:9090"
