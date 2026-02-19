@@ -19,25 +19,6 @@ docker compose up -d
 docker compose ps
 ```
 
-### 使用 Portainer 启动仍很慢时
-
-1. **务必只挂载配置文件**  
-   在 Stack 的 compose 里，mihomo 的 volumes 必须是：
-   ```yaml
-   - ./config/mihomo/config.yaml:/root/.config/mihomo/config.yaml
-   ```
-   不要用 `./config/mihomo:/root/.config/mihomo`，否则会覆盖镜像内 geo 数据，**每次启动都从 GitHub 拉 1～3 分钟**。
-
-2. **路径要对**  
-   Portainer 里 `./` 是 Stack 的“项目路径”。若你把仓库放在 `/opt/clash-stack`，在 Portainer 创建 Stack 时把“Project path”设为 `/opt/clash-stack`，或把 volume 改成**绝对路径**：
-   ```yaml
-   - /opt/clash-stack/config/mihomo/config.yaml:/root/.config/mihomo/config.yaml
-   ```
-   否则可能挂到空文件，mihomo 起不来或反复重启。
-
-3. **首次会拉镜像**  
-   第一次部署会拉镜像，之后启动会快很多。健康检查已改为用 `nc` 检测端口（约 15s start_period + 若干次 10s 间隔），mihomo 就绪后 MetaCubeXd 才会启动。
-
 ## Sub-Store：多订阅组合
 
 Sub-Store 用于**管理多个订阅并组合成一条订阅**，而不是做格式转换。你可以：
@@ -113,27 +94,6 @@ docker compose down
 docker compose logs -f sub-store
 docker compose restart mihomo
 ```
-
-## Mihomo 启动慢？（已从源码排查）
-
-**根本原因**（见 [MetaCubeX/mihomo](https://github.com/MetaCubeX/mihomo/tree/Meta)）：
-
-- 官方镜像在**构建时**会把 `geoip.metadb`、`geosite.dat`、`geoip.dat` 放进 `/root/.config/mihomo/`。
-- 若用**整目录**挂载 `./config/mihomo:/root/.config/mihomo`，会**覆盖**镜像里的该目录，容器内就看不到这些 geo 文件。
-- 启动时 [geodata/init.go](https://github.com/MetaCubeX/mihomo/blob/Meta/component/geodata/init.go) 发现没有 geo 文件，会从 GitHub 下载（每个文件最多等 90 秒），导致启动很慢。
-
-**当前做法**：compose 里已改为**只挂载配置文件** `config.yaml`，不挂载整个目录，这样镜像自带的 geo 数据保留，启动时不再下载，速度正常。
-
-若你希望继续挂载整个目录（例如要持久化 `cache.db`），请先在宿主机 `config/mihomo/` 下放好 geo 文件，再挂载目录，例如：
-
-```bash
-cd config/mihomo
-wget -qO geoip.metadb https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.metadb
-wget -qO geosite.dat https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.dat
-wget -qO geoip.dat https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.dat
-```
-
-然后再把 compose 里 mihomo 的 volumes 改回 `./config/mihomo:/root/.config/mihomo`。
 
 ## 安全与生产环境建议
 
