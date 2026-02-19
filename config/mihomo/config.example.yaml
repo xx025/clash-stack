@@ -1,13 +1,9 @@
-# Mihomo 配置：允许局域网访问，Mixed 端口 7890
-# 修改后需执行: docker compose restart mihomo
+# Mihomo 配置示例（复制为 config.yaml 后使用）
+# 修改后执行: docker compose restart mihomo
 
-# 混合端口：HTTP + SOCKS5 共用 7890
 mixed-port: 7890
-
-# 允许局域网访问
 allow-lan: true
 bind-address: "*"
-# 允许的局域网 IP 段（默认即全部）
 lan-allowed-ips:
   - 0.0.0.0/0
   - "::/0"
@@ -25,6 +21,60 @@ dns:
     - 119.29.29.29
 
 proxies: []
-proxy-groups: []
+
+# 远程规则集（自动更新，无需手写）
+rule-providers:
+  reject:
+    type: http
+    behavior: domain
+    url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/reject.txt"
+    path: ./ruleset/reject.yaml
+    interval: 86400
+  proxy:
+    type: http
+    behavior: domain
+    url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/proxy.txt"
+    path: ./ruleset/proxy.yaml
+    interval: 86400
+  direct:
+    type: http
+    behavior: domain
+    url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/direct.txt"
+    path: ./ruleset/direct.yaml
+    interval: 86400
+
 rules:
-  - MATCH,DIRECT
+  - RULE-SET,reject,REJECT
+  - RULE-SET,proxy,🚀 节点选择
+  - RULE-SET,direct,DIRECT
+  - GEOIP,CN,DIRECT
+  - MATCH,🚀 节点选择
+
+# ========== 订阅链接填写说明 ==========
+# 节点来自 Sub-Store，请按下面步骤获取链接并替换下方的 url：
+#
+# 1. 打开 Sub-Store 页面：http://<你的服务器IP>:7893
+# 2. 在「订阅」里添加你的机场/订阅，或创建「合集」把多个订阅合并
+# 3. 点击该订阅/合集右侧的「分享」或「复制链接」
+# 4. 链接格式通常为：
+#    http://<Sub-Store地址>:7893/share/col/<合集名>?token=<你的token>&target=ClashMeta
+#    或 /share/sub/<订阅名>?token=xxx&target=ClashMeta
+# 5. 将下面 my-sub 的 url 换成你复制的完整链接（必须带 target=ClashMeta）
+# 6. 若 Sub-Store 有设置 API 路径（如 /api），分享链接里已包含则无需改
+#
+proxy-providers:
+  my-sub:
+    type: http
+    # 请替换为你的 Sub-Store 订阅/合集分享链接（target=ClashMeta）
+    url: "http://YOUR_SERVER_IP:7893/share/col/YOUR_COLLECTION?token=YOUR_TOKEN&target=ClashMeta"
+    interval: 3600
+    path: ./proxies/my-sub.yaml
+    health-check:
+      enable: true
+      url: http://www.gstatic.com/generate_204
+      interval: 300
+
+proxy-groups:
+  - name: 🚀 节点选择
+    type: select
+    use: [my-sub]
