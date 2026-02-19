@@ -1,38 +1,38 @@
 # Mihomo (Clash Meta) + MetaCubeXd 面板 + 订阅管理 一键栈
 # 宿主机端口连续：7890 代理 / 7891 API / 7892 面板 / 7893 Sub-Store
-# 使用: docker compose up -d
+# 使用: docker compose up -d（必须在项目目录执行，或把下面路径改成你的实际项目路径）
 
 services:
   # Mihomo 代理核心 (Clash Meta 兼容，HTTP/SOCKS5 + REST API)
   mihomo:
     image: metacubex/mihomo:latest
     container_name: mihomo
-    restart: unless-stopped
+    restart: always
     volumes:
-      # 仅挂载配置文件，避免覆盖镜像内自带的 geo 数据（否则每次启动会从 GitHub 下载，拖慢 1～3 分钟）
-      - ./config/mihomo/config.yaml:/root/.config/mihomo/config.yaml
+      # 绝对路径：重启/任意目录执行都不会丢配置。若项目不在本机此路径，请改成你的实际路径
+      - /home/user/workspace/clash-stack/config/mihomo/config.yaml:/root/.config/mihomo/config.yaml
     ports:
-      - "7890:7890"   # 混合代理 (HTTP + SOCKS5 共用)
-      - "7891:9090"   # REST API (面板连接用)
+      - "7890:7890"
+      - "7891:9090"
     environment:
       - TZ=Asia/Shanghai
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:9090"]
-      interval: 15s
-      timeout: 5s
+      # 镜像无 wget，用 nc 检测 9090 端口（Alpine busybox 自带）
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 9090 || exit 1"]
+      interval: 10s
+      timeout: 3s
       retries: 5
-      start_period: 30s
+      start_period: 15s
 
   # MetaCubeXd - Mihomo 官方 Web 控制面板
   metacubexd:
     image: dzlx/metacubexd
     container_name: metacubexd
-    restart: unless-stopped
+    restart: always
     ports:
       - "7892:80"
     environment:
       - TZ=Asia/Shanghai
-      # 浏览器访问面板时的默认 API 地址（对应宿主机端口 7891）
       - DEFAULT_BACKEND_URL=http://127.0.0.1:7891
     depends_on:
       mihomo:
@@ -42,7 +42,7 @@ services:
   sub-store:
     image: xream/sub-store:latest
     container_name: sub-store
-    restart: unless-stopped
+    restart: always
     ports:
       # 前端 3000 对外；后端 3001 仅容器内，避免前后端同端口 EADDRINUSE
       - "7893:3000"

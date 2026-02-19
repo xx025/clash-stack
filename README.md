@@ -19,6 +19,25 @@ docker compose up -d
 docker compose ps
 ```
 
+### 使用 Portainer 启动仍很慢时
+
+1. **务必只挂载配置文件**  
+   在 Stack 的 compose 里，mihomo 的 volumes 必须是：
+   ```yaml
+   - ./config/mihomo/config.yaml:/root/.config/mihomo/config.yaml
+   ```
+   不要用 `./config/mihomo:/root/.config/mihomo`，否则会覆盖镜像内 geo 数据，**每次启动都从 GitHub 拉 1～3 分钟**。
+
+2. **路径要对**  
+   Portainer 里 `./` 是 Stack 的“项目路径”。若你把仓库放在 `/opt/clash-stack`，在 Portainer 创建 Stack 时把“Project path”设为 `/opt/clash-stack`，或把 volume 改成**绝对路径**：
+   ```yaml
+   - /opt/clash-stack/config/mihomo/config.yaml:/root/.config/mihomo/config.yaml
+   ```
+   否则可能挂到空文件，mihomo 起不来或反复重启。
+
+3. **首次会拉镜像**  
+   第一次部署会拉镜像，之后启动会快很多。健康检查已改为用 `nc` 检测端口（约 15s start_period + 若干次 10s 间隔），mihomo 就绪后 MetaCubeXd 才会启动。
+
 ## Sub-Store：多订阅组合
 
 Sub-Store 用于**管理多个订阅并组合成一条订阅**，而不是做格式转换。你可以：
